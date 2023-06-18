@@ -1,6 +1,8 @@
 import streamlit as st
 import cv2 
-import numpy as np    
+import numpy as np 
+from streamlit_autorefresh import st_autorefresh
+
 # import tensorflow as tf
 # import time
 # import os
@@ -20,10 +22,11 @@ from utils import quantify_image
 def main():
     models()
     
+    
 def models():
     st.title("PARKINSON’S DISEASE PREDICTION: A MULTI-MODAL MACHINE LEARNING APPROACH")
 
-    image = st.file_uploader('Upload the image below')
+    image = st.file_uploader('Upload the image below', type=['png', ])
     audio = st.file_uploader('Upload the audio file below', type=['wav', 'mp3'])
 
     predict_button = st.button('Predict')
@@ -45,7 +48,8 @@ def models():
             st.text('Please upload the File')
     
 def get_audio_model():
-    return pkl.load(open('models/audio_model.pkl', 'rb'))
+    model = pkl.load(open('models/audio_model.pkl', 'rb'))
+    return model
 
 def get_image_model():
     return pkl.load(open('models/drawing_model.pkl', 'rb'))
@@ -60,25 +64,46 @@ def predictionParkinson(image,sound):
     # logic here
     (meanF0, maxf0, minf0, stdevF0, hnr, nhr, localJitter, localabsoluteJitter, rapJitter, ppq5Jitter, ddpJitter, localShimmer, localdbShimmer, apq3Shimmer, aqpq5Shimmer, apq11Shimmer, ddaShimmer) = measurePitch(sound, 75, 500, "Hertz")
     audio_input = [meanF0, maxf0, minf0, localJitter, localabsoluteJitter, rapJitter, ppq5Jitter, ddpJitter, localShimmer, localdbShimmer, apq3Shimmer, aqpq5Shimmer, apq11Shimmer, ddaShimmer, nhr, hnr]
+    audio_input = list(map(float, audio_input))
 
     image = cv2.cvtColor(image , cv2.COLOR_BGR2GRAY)
     image = cv2.resize(image , (200,200))
     image =cv2.threshold(image, 0, 255,cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
     features = quantify_image(image)
-    image_input = np.array([].append(features))
+    print("Features is : ")
+    print(features)
+    inp_list = []
+    inp_list.append(features)
+    image_input = np.array(inp_list)
 
-    print("============================")
-    print(audio_input)
-    print("============================")
+    # print("============================")
+    # print(audio_input)
+    # print(type(audio_input))
+    # print("============================")
 
     audio_result = audio_model.predict([audio_input, ])
-    #image_result = image_model.predict(image_input)
-    #logic end
-    #st.write(audio_result)
-    #st.write(image_result)
+    # st.write("Audio Model Result")
+    # st.write(audio_result)
+
+
+    
+    print("============================")
+    print(image_input)
+    print(type(image_input))
+    print("============================")
+    image_result = image_model.predict(image_input)
+    # logic end
+    # st.write("Image Model Result")
+    if(image_result==0):
+        st.write("Result : You don't have Parkinson!")
+    else:
+        st.write("Result : You have Parkinson!")
+
+    
 
     progress_bar.progress(100)
     state.text('\n Completed!')
+    # state.text('\n ' + str(audio_result))
     progress_bar.empty()
     
 if __name__ == "__main__":
